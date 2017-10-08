@@ -4,7 +4,7 @@ provider "aws" {
   region = "${var.region}"
 }
 
-resource "terraform_remote_state" "tfstate" {
+data "terraform_remote_state" "tfstate" {
   backend = "s3"
 
   config {
@@ -72,7 +72,7 @@ resource "aws_security_group" "sg_jenkins" {
   }
 }
 
-resource "template_file" "user_data" {
+data "template_file" "user_data" {
   template = "${file("templates/user_data.tpl")}"
 }
 
@@ -81,7 +81,7 @@ resource "aws_instance" "jenkins" {
   security_groups = ["${aws_security_group.sg_jenkins.name}"]
   ami = "${lookup(var.amis, var.region)}"
   key_name = "${var.key_name}"
-  user_data = "${template_file.user_data.rendered}"
+  user_data = "${data.template_file.user_data.rendered}"
 
   tags {
     "Name" = "${var.jenkins_name}"
@@ -93,7 +93,7 @@ resource "aws_instance" "jenkins" {
       user = "ec2-user"
       host = "${aws_instance.jenkins.public_ip}"
       timeout = "1m"
-      key_file = "${var.key_name}.pem"
+      private_key = "${file("${var.key_name}.pem")}"
     }
     source = "templates/cron.sh"
     destination = "/home/ec2-user/cron.sh"
@@ -104,7 +104,7 @@ resource "aws_instance" "jenkins" {
       user = "ec2-user"
       host = "${aws_instance.jenkins.public_ip}"
       timeout = "1m"
-      key_file = "${var.key_name}.pem"
+      private_key = "${file("${var.key_name}.pem")}"
     }
     inline = [
       "chmod +x /home/ec2-user/cron.sh",
